@@ -1,0 +1,42 @@
+name: CI
+
+# SE EJECUTA EN CADA PUSH A MAIN, EN CADA PULL REQUEST O CON EL BOTÓN "RUN WORKFLOW"
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # CORREMOS LAS PRUEBAS, INCLUIDA LA PUERTA DE CALIDAD DEL MODELO
+  pruebas:
+    name: Pruebas y puerta de calidad
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Instalar las versiones exactas del uv.lock
+        run: uv sync --locked
+      - name: Ejecutar las pruebas
+        run: uv run pytest -v
+
+  # SI LAS PRUEBAS PASAN, CONSTRUIMOS LA IMAGEN DOCKER Y LA PUBLICAMOS EN GITHUB
+  imagen:
+    name: Imagen Docker
+    needs: pruebas
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Construir la imagen
+        run: |
+          IMAGEN="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "IMAGEN=$IMAGEN" >> "$GITHUB_ENV"
+          docker build -t "$IMAGEN:latest" -t "$IMAGEN:${GITHUB_SHA::7}" .
+      - name: Publicar la imagen
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker push --all-tags "$IMAGEN"

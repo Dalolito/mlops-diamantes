@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+.pytest_cache/
+
+# SE GENERAN AL EJECUTAR EL PROYECTO
+mlflow.db
+mlruns/
+registros/
+reportes/

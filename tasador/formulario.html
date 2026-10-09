@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tasador de diamantes</title>
+  <style>
+    :root { --tinta: #1d2433; --suave: #5f6b7a; --borde: #d9dee5; --fondo: #f4f6f9; --acento: #0f5e9c; --alerta: #9a5b00; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--fondo); color: var(--tinta); }
+    main { max-width: 720px; margin: 40px auto; padding: 0 16px; }
+    h1 { font-size: 26px; margin: 0 0 4px; }
+    p.sub { margin: 0 0 24px; color: var(--suave); }
+    form, .resultado { background: #fff; border: 1px solid var(--borde); border-radius: 12px; padding: 24px; }
+    .campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+    label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--suave); }
+    input, select { font: inherit; color: var(--tinta); padding: 9px 10px; border: 1px solid var(--borde); border-radius: 8px; background: #fff; }
+    button { margin-top: 20px; width: 100%; padding: 12px; font: inherit; font-weight: 600; color: #fff; background: var(--acento); border: 0; border-radius: 8px; cursor: pointer; }
+    .resultado { margin-top: 16px; display: none; }
+    .precio { font-size: 40px; font-weight: 700; margin: 4px 0; }
+    .detalle { color: var(--suave); font-size: 14px; }
+    .revision { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: #fff4e0; color: var(--alerta); font-size: 14px; }
+    .error { color: #a3261c; }
+    footer { margin-top: 16px; font-size: 13px; color: var(--suave); }
+    footer a { color: var(--acento); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Tasador de diamantes</h1>
+  <p class="sub">Ingresa las características del diamante para obtener un precio de referencia.</p>
+
+  <form id="formulario">
+    <div class="campos">
+      <label>Peso en quilates (carat)<input name="carat" type="number" step="0.01" value="1.01" required></label>
+      <label>Corte (cut)
+        <select name="cut">
+          <option>Fair</option><option>Good</option><option>Very Good</option><option>Premium</option><option selected>Ideal</option>
+        </select>
+      </label>
+      <label>Color (J peor … D mejor)
+        <select name="color">
+          <option>J</option><option>I</option><option>H</option><option selected>G</option><option>F</option><option>E</option><option>D</option>
+        </select>
+      </label>
+      <label>Claridad (I1 peor … IF mejor)
+        <select name="clarity">
+          <option>I1</option><option>SI2</option><option>SI1</option><option>VS2</option><option selected>VS1</option><option>VVS2</option><option>VVS1</option><option>IF</option>
+        </select>
+      </label>
+      <label>Profundidad % (depth)<input name="depth" type="number" step="0.1" value="61.8" required></label>
+      <label>Mesa % (table)<input name="table" type="number" step="0.1" value="57" required></label>
+      <label>Largo mm (x)<input name="x" type="number" step="0.01" value="6.42" required></label>
+      <label>Ancho mm (y)<input name="y" type="number" step="0.01" value="6.46" required></label>
+      <label>Alto mm (z)<input name="z" type="number" step="0.01" value="3.98" required></label>
+    </div>
+    <button type="submit">Tasar diamante</button>
+  </form>
+
+  <section class="resultado" id="resultado" aria-live="polite"></section>
+
+  <footer>Servicio de tasación con MLOps · <a href="/docs">Documentación de la API</a></footer>
+</main>
+
+<script>
+  const formulario = document.getElementById("formulario");
+  const resultado = document.getElementById("resultado");
+  const dolares = new Intl.NumberFormat("es-CO", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+  formulario.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    const datos = Object.fromEntries(new FormData(formulario));
+    for (const campo of ["carat", "depth", "table", "x", "y", "z"]) datos[campo] = Number(datos[campo]);
+
+    const respuesta = await fetch("/tasar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(datos),
+    });
+    const cuerpo = await respuesta.json();
+    resultado.style.display = "block";
+
+    if (!respuesta.ok) {
+      const campos = cuerpo.detail.map((e) => e.loc.at(-1)).join(", ");
+      resultado.innerHTML = `<p class="error">Revisa estos campos: ${campos}</p>`;
+      return;
+    }
+
+    resultado.innerHTML = `
+      <div class="detalle">Precio sugerido</div>
+      <div class="precio">${dolares.format(cuerpo.precio_estimado)}</div>
+      <div class="detalle">Tasado por el modelo versión ${cuerpo.version_modelo}</div>
+      ${cuerpo.revision_humana ? '<div class="revision">Este diamante está fuera del rango con que se entrenó el modelo: requiere revisión de un tasador.</div>' : ""}
+    `;
+  });
+</script>
+</body>
+</html>

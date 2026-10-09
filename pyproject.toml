@@ -1,0 +1,37 @@
+[project]
+name = "mlops-diamantes"
+version = "1.0.0"
+description = "Ejemplo de MLOps con el tasador de diamantes del Reto 1"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "evidently>=0.7.23",
+    "fastapi>=0.143",
+    "lightgbm>=4.7",
+    "mlflow>=3.17",
+    "pandas>=3.0",
+    "scikit-learn>=1.9",
+    "uvicorn>=0.54",
+]
+
+[dependency-groups]
+dev = ["httpx2>=2.13", "pytest>=9.1"]
+
+[project.scripts]
+entrenar = "tasador.entrenar:main"
+api = "tasador.api:main"
+simular-drift = "tasador.simular_drift:main"
+monitorear = "tasador.monitorear:main"
+reentrenar = "tasador.reentrenar:main"
+pipeline = "tasador.pipeline:main"
+
+[build-system]
+requires = ["uv_build>=0.8,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "tasador"
+module-root = ""
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

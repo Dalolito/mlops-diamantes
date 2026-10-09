@@ -1,0 +1,33 @@
+name: Reentrenamiento mensual
+
+# SE EJECUTA SOLO EL DÍA 1 DE CADA MES A LAS 6:00 A. M. (HORA COLOMBIA) O CON EL BOTÓN "RUN WORKFLOW"
+on:
+  schedule:
+    - cron: "0 11 1 * *"
+  workflow_dispatch:
+
+jobs:
+  pipeline:
+    name: Entrenar, monitorear y reentrenar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Instalar las versiones exactas del uv.lock
+        run: uv sync --locked --no-dev
+
+      # CORREMOS EL PIPELINE Y MOSTRAMOS SU SALIDA EN EL RESUMEN DE LA EJECUCIÓN
+      - name: Ejecutar el pipeline completo
+        shell: bash
+        run: |
+          uv run pipeline | tee salida.txt
+          { echo '```'; cat salida.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      # GUARDAMOS EL REPORTE DE DRIFT Y EL LOG DE TASACIONES PARA DESCARGARLOS
+      - uses: actions/upload-artifact@v7
+        with:
+          name: resultados-del-pipeline
+          path: |
+            reportes/
+            registros/
+            salida.txt
